@@ -1,81 +1,70 @@
 import java.util.ArrayList;
+import java.util.Scanner;
 
 /**
- * ThreadCheckArray class that implements Runnable and checks an ArrayList<Integer>.
+ * Reads an integer sequence and target, then starts two threads to search for a solution.
  */
-public class ThreadCheckArray implements Runnable {
-    private boolean flag;
-    private boolean[] winArray;
-    private SharedData sd;
-
+public class TestThreadCheckArray {
     /**
-     * Constructor to initialize the ThreadCheckArray with a SharedData object.
+     * Reads input, runs the search, and prints the resulting solution.
      *
-     * @param sd The shared data object containing array, b, and other necessary information.
+     * @param args command-line arguments (unused)
      */
-    public ThreadCheckArray(SharedData sd) {
-        this.sd = sd;
-        synchronized (sd) {
-            ArrayList<Integer> arrayList = sd.getArray();
-            int size = arrayList.size();
-            array = new int[size];
-            for (int i = 0; i < size; i++) {
-                array[i] = arrayList.get(i);
-            }
-            b = sd.getB();
-        }
-        winArray = new boolean[array.length];
-    }
+    public static void main(String[] args) {
+        try (Scanner input = new Scanner(System.in)) {
+            Thread thread1, thread2;
+            System.out.println("Enter array size");
+            int num  = input.nextInt();
+            ArrayList<Integer> array = new ArrayList<>(num);
+            System.out.println("Enter numbers for array");
 
-    /**
-     * Recursive method to check if the sum of a subset of the array equals b.
-     *
-     * @param n The current index in the array.
-     * @param b The target sum.
-     */
-    void rec(int n, int b) {
-        synchronized (sd) {
-            if (sd.getFlag()) return;
-        }
-        if (n == 1) {
-            if (b == 0 || b == array[n - 1]) {
-                flag = true;
-                synchronized (sd) { sd.setFlag(true); }
-            }
-            if (b == array[n - 1]) winArray[n - 1] = true;
-            return;
-        }
+            for (int index = 0; index < num; index++)
+                array.add(input.nextInt());
 
-        rec(n - 1, b - array[n - 1]);
-        if (flag) winArray[n - 1] = true;
-        synchronized (sd) {
-            if (sd.getFlag()) return;
-        }
-        rec(n - 1, b);
-    }
+            System.out.println("Enter number");
+            num = input.nextInt();
 
-    @Override
-    public void run() {
-        if (array.length != 1) {
-            if (Thread.currentThread().getName().equals("thread1"))
-                rec(array.length - 1, b - array[array.length - 1]);
-            else
-                rec(array.length - 1, b);
-        }
-        if (array.length == 1) {
-            if (b == array[0] && !flag) {
-                winArray[0] = true;
-                flag = true;
-                synchronized (sd) { sd.setFlag(true); }
+            int[] values = new int[array.size()];
+            for (int index = 0; index < array.size(); index++)
+                values[index] = array.get(index);
+            SharedData sd = new SharedData(values, num);
+
+            thread1 = new Thread(new ThreadCheckArray(sd), "thread1");
+            thread2 = new Thread(new ThreadCheckArray(sd), "thread2");
+            thread1.start();
+            thread2.start();
+            try {
+                thread1.join();
+                thread2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-        }
-        if (flag) {
-            if (Thread.currentThread().getName().equals("thread1"))
-                winArray[array.length - 1] = true;
-            synchronized (sd) { sd.setWinArray(winArray); }
+            if (!sd.getFlag()) {
+                System.out.println("Sorry");
+                return;
+            }
+            System.out.println("Solution for b : " + sd.getB() + ",n = " + sd.getArray().length);
+            System.out.print("I:    ");
+            for(int index = 0; index < sd.getArray().length ; index++)
+                System.out.print(index + "    ");
+            System.out.println();
+            System.out.print("A:    ");
+            for (int index : sd.getArray()) {
+                System.out.print(index);
+                int counter = 5;
+                while (true) {
+                    index = index / 10;
+                    counter--;
+                    if (index == 0) break;
+                }
+                for (int i = 0; i < counter; i++) System.out.print(" ");
+            }
+            System.out.println();
+            System.out.print("C:    ");
+            for (boolean index : sd.getWinArray()) {
+                if (index) System.out.print("1    ");
+                else System.out.print("0    ");
+            }
         }
     }
-
-    private int[] array; // Changed from ArrayList<Integer> to int[]
-    private int b;
 }
