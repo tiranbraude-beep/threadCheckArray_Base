@@ -1,17 +1,32 @@
+import java.util.ArrayList;
+
+/**
+ * Searches a shared integer sequence for a subset matching the target.
+ *
+ * <p>The sequence is held as an {@code ArrayList}{@code <Integer>}; the corresponding
+ * match markers remain a primitive {@code boolean[]}.</p>
+ */
 public class ThreadCheckArray implements Runnable {
     private boolean flag;
     private boolean[] winArray;
     SharedData sd;
-    int[] array;
+    ArrayList<Integer> array;
     int b;
 
+    /**
+     * Creates a search worker using the sequence and target from shared data.
+     *
+     * @param sd shared sequence, target, and result state
+     */
     public ThreadCheckArray(SharedData sd) {
         this.sd = sd;
         synchronized (sd) {
-            array = sd.getArray();
+            array = new ArrayList<>(sd.getArray().length);
+            for (int value : sd.getArray())
+                array.add(value);
             b = sd.getB();
         }
-        winArray = new boolean[array.length];
+        winArray = new boolean[array.size()];
     }
 
     void rec(int n, int b) {
@@ -19,15 +34,15 @@ public class ThreadCheckArray implements Runnable {
             if (sd.getFlag()) return;
         }
         if (n == 1) {
-            if(b == 0 || b == array[n-1]) {
+            if(b == 0 || b == array.get(n-1)) {
                 flag = true;
                 synchronized (sd) { sd.setFlag(true); }
             }
-            if (b == array[n-1]) winArray[n-1] = true;
+            if (b == array.get(n-1)) winArray[n-1] = true;
             return;
         }
 
-        rec(n-1, b - array[n-1]);
+        rec(n-1, b - array.get(n-1));
         if (flag) winArray[n-1] = true;
         synchronized (sd) {
             if (sd.getFlag()) return;
@@ -35,21 +50,24 @@ public class ThreadCheckArray implements Runnable {
         rec(n-1, b);
     }
 
+    /**
+     * Runs the worker's portion of the subset search.
+     */
     public void run() {
-        if (array.length != 1)
+        if (array.size() != 1)
             if (Thread.currentThread().getName().equals("thread1"))
-                rec(array.length-1, b - array[array.length - 1]);
+                rec(array.size()-1, b - array.get(array.size() - 1));
             else
-                rec(array.length-1, b);
-        if (array.length == 1)
-            if (b == array[0] && !flag) {
+                rec(array.size()-1, b);
+        if (array.size() == 1)
+            if (b == array.get(0) && !flag) {
                 winArray[0] = true;
                 flag = true;
                 synchronized (sd) { sd.setFlag(true); }
             }
         if (flag) {
             if (Thread.currentThread().getName().equals("thread1"))
-                winArray[array.length - 1] = true;
+                winArray[array.size() - 1] = true;
             synchronized (sd) { sd.setWinArray(winArray); }
         }
     }

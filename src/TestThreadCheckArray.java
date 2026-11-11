@@ -1,21 +1,33 @@
+import java.util.ArrayList;
 import java.util.Scanner;
 
+/**
+ * Reads an integer sequence and target, then starts two threads to search for a solution.
+ */
 public class TestThreadCheckArray {
+    /**
+     * Reads input, runs the search, and prints the resulting solution.
+     *
+     * @param args command-line arguments (unused)
+     */
     public static void main(String[] args) {
         try (Scanner input = new Scanner(System.in)) {
             Thread thread1, thread2;
             System.out.println("Enter array size");
             int num  = input.nextInt();
-            int[] array = new int[num];
+            ArrayList<Integer> array = new ArrayList<>(num);
             System.out.println("Enter numbers for array");
 
             for (int index = 0; index < num; index++)
-                array[index] = input.nextInt();
+                array.add(input.nextInt());
 
             System.out.println("Enter number");
             num = input.nextInt();
 
-            SharedData sd = new SharedData(array, num);
+            int[] values = new int[array.size()];
+            for (int index = 0; index < array.size(); index++)
+                values[index] = array.get(index);
+            SharedData sd = new SharedData(values, num);
 
             thread1 = new Thread(new ThreadCheckArray(sd), "thread1");
             thread2 = new Thread(new ThreadCheckArray(sd), "thread2");
