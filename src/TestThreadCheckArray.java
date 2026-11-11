@@ -1,58 +1,81 @@
-import java.util.Scanner;
+import java.util.ArrayList;
 
-public class TestThreadCheckArray {
-    public static void main(String[] args) {
-        try (Scanner input = new Scanner(System.in)) {
-            Thread thread1, thread2;
-            System.out.println("Enter array size");
-            int num  = input.nextInt();
-            int[] array = new int[num];
-            System.out.println("Enter numbers for array");
+/**
+ * ThreadCheckArray class that implements Runnable and checks an ArrayList<Integer>.
+ */
+public class ThreadCheckArray implements Runnable {
+    private boolean flag;
+    private boolean[] winArray;
+    private SharedData sd;
 
-            for (int index = 0; index < num; index++)
-                array[index] = input.nextInt();
-
-            System.out.println("Enter number");
-            num = input.nextInt();
-
-            SharedData sd = new SharedData(array, num);
-
-            thread1 = new Thread(new ThreadCheckArray(sd), "thread1");
-            thread2 = new Thread(new ThreadCheckArray(sd), "thread2");
-            thread1.start();
-            thread2.start();
-            try {
-                thread1.join();
-                thread2.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+    /**
+     * Constructor to initialize the ThreadCheckArray with a SharedData object.
+     *
+     * @param sd The shared data object containing array, b, and other necessary information.
+     */
+    public ThreadCheckArray(SharedData sd) {
+        this.sd = sd;
+        synchronized (sd) {
+            ArrayList<Integer> arrayList = sd.getArray();
+            int size = arrayList.size();
+            array = new int[size];
+            for (int i = 0; i < size; i++) {
+                array[i] = arrayList.get(i);
             }
-            if (!sd.getFlag()) {
-                System.out.println("Sorry");
-                return;
+            b = sd.getB();
+        }
+        winArray = new boolean[array.length];
+    }
+
+    /**
+     * Recursive method to check if the sum of a subset of the array equals b.
+     *
+     * @param n The current index in the array.
+     * @param b The target sum.
+     */
+    void rec(int n, int b) {
+        synchronized (sd) {
+            if (sd.getFlag()) return;
+        }
+        if (n == 1) {
+            if (b == 0 || b == array[n - 1]) {
+                flag = true;
+                synchronized (sd) { sd.setFlag(true); }
             }
-            System.out.println("Solution for b : " + sd.getB() + ",n = " + sd.getArray().length);
-            System.out.print("I:    ");
-            for(int index = 0; index < sd.getArray().length ; index++)
-                System.out.print(index + "    ");
-            System.out.println();
-            System.out.print("A:    ");
-            for (int index : sd.getArray()) {
-                System.out.print(index);
-                int counter = 5;
-                while (true) {
-                    index = index / 10;
-                    counter--;
-                    if (index == 0) break;
-                }
-                for (int i = 0; i < counter; i++) System.out.print(" ");
-            }
-            System.out.println();
-            System.out.print("C:    ");
-            for (boolean index : sd.getWinArray()) {
-                if (index) System.out.print("1    ");
-                else System.out.print("0    ");
+            if (b == array[n - 1]) winArray[n - 1] = true;
+            return;
+        }
+
+        rec(n - 1, b - array[n - 1]);
+        if (flag) winArray[n - 1] = true;
+        synchronized (sd) {
+            if (sd.getFlag()) return;
+        }
+        rec(n - 1, b);
+    }
+
+    @Override
+    public void run() {
+        if (array.length != 1) {
+            if (Thread.currentThread().getName().equals("thread1"))
+                rec(array.length - 1, b - array[array.length - 1]);
+            else
+                rec(array.length - 1, b);
+        }
+        if (array.length == 1) {
+            if (b == array[0] && !flag) {
+                winArray[0] = true;
+                flag = true;
+                synchronized (sd) { sd.setFlag(true); }
             }
         }
+        if (flag) {
+            if (Thread.currentThread().getName().equals("thread1"))
+                winArray[array.length - 1] = true;
+            synchronized (sd) { sd.setWinArray(winArray); }
+        }
     }
+
+    private int[] array; // Changed from ArrayList<Integer> to int[]
+    private int b;
 }
